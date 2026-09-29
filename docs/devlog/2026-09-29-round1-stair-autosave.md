@@ -27,6 +27,7 @@ saves before entering the lamp room.
 
 The original locked demo list is preserved. Wall collision appears in M2's
 definition of done but not that list; the mismatch is noted for a scope decision.
-The lamp-room transition is wired, but its player, puzzle and relight ending
-are still unfinished. PR1 stays open for tracing, and Dmitri still needs to
-verify the save feedback in play.
+The lamp-room transition is wired. Its player, puzzle and relight gameplay,
+the journal, and further controller work are **deferred**: listed for later,
+with no implementation planned in this PR. PR1 stays open for tracing, and
+Dmitri still needs to verify the save feedback in play.

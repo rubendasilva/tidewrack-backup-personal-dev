@@ -44,6 +44,11 @@ but the Next Fest date is firm.
 locked demo list above does not. Confirm whether collision is required for the
 demo; it has not been added to the locked scope.
 
+**Deferred from the current work (2026-09-29):** lamp-room player/gameplay,
+journal implementation, and further controller work. These are listed for
+later, with no implementation planned in this PR. The original locked demo
+list above is preserved; this deferral does not assign a new milestone or date.
+
 ## Round 1 triage and demo release gate (2026-09-29)
 
 **Release status: BLOCKED.** A candidate tag or passing dialogue-JSON validation
@@ -67,8 +72,9 @@ closing the report. Proposed fixes and checks are on `fix/round1-demo-readiness`
 | INPUT-1 | P0 | `project.godot` replaced keyboard actions with gamepad-only events. Baseline Enter failed; keyboard bindings have been restored alongside controller bindings. | FIXED IN BRANCH — export QA pending | Enter/Space, Esc, arrows, stick and A/B all work in the same exported build. |
 | SAVE-1 | P1 | Stair interaction now autosaves room + story flags before switching to the lamp room. A screen-space **Game saved** panel stays visible for two seconds and names the ground-floor entrance checkpoint. Save failure preserves the previous slot, keeps the player downstairs and offers a retry. | FIXED IN BRANCH — player/export QA pending | Interact with stair, read confirmation, enter lamp room, quit/relaunch and Continue at the ground-floor entrance with all choices intact. Repeat with a failed save; no transition or false success message. Confirm readability with Dmitri. |
 | SAVE-2 | P1 | The old writer truncated the live slot and reported success without checking write completion. Saves now write a temporary snapshot, check errors and replace the slot; invalid loads are rejected without mutating the live game, and Continue shows an error. | FIXED IN BRANCH — export QA pending | Successful overwrite and reload; failed write preserves previous slot; corrupted/unsupported saves show an error. Verify replacement semantics on each supported OS. |
-| TRANSITION-1 | P0 | Ground floor → lamp room is now wired, with a pre-transition autosave and readable confirmation. A load failure restores controls downstairs and retains the checkpoint. `lamp_room.gd` still has no player, puzzle or wired relight dialogue. | FAIL — lamp-room content remains incomplete | The transition/save flow passes focused checks; complete the playable lamp room and relight ending, then test the full exported route. |
-| JOURNAL-1 | P1 | Journal remains a storage scaffold: no autoload registration, discovery wiring, reader UI or persistence. | FAIL — implementation missing | Discover a log, read it in the journal, save/relaunch and retain it without duplicates. |
+| TRANSITION-1 | Deferred | Ground floor → lamp room is wired, with a pre-transition autosave and readable confirmation. Lamp-room player, puzzle and relight gameplay are not implemented. | DEFERRED — no implementation in this PR | When resumed: build and verify the playable lamp room and relight ending. Existing save/transition checks remain separate. |
+| JOURNAL-1 | Deferred | Journal remains a storage scaffold: no autoload registration, discovery wiring, reader UI or persistence. | DEFERRED — no implementation in this PR | When resumed: discover/read logs and retain them through save/relaunch without duplicates. |
+| CONTROLLER-1 | Deferred | Existing gamepad bindings are present. Further controller functionality and physical-device verification are outside the current work. | DEFERRED — no further controller work in this PR | When resumed: verify the complete intended flow on a physical controller. |
 | COLLISION-1 | Scope pending | Player only clamps to room bounds; `_resolve_walls()` is a stub. M2 includes collision, but the locked list omits it. | SCOPE MISMATCH — decision needed | Resolve the scope mismatch before treating collision as a demo release blocker. |
 | PAUSE-1 | P1 | Reproduced: Esc clears `_paused` but leaves `PauseLayer` and Resume focus alive. In the headless repro, the next Enter reached both the old GUI and gameplay; it was not swallowed. Esc/B and Resume now share immediate focus release and overlay teardown. This is a separate verified defect, not proof of PR1's cause. | FIXED IN BRANCH — export QA pending | Open and close pause repeatedly with Esc/B and Resume; overlay disappears, focus clears and the next game input works. |
 | BUILD-1 | P0 | No packaged demo was supplied or exported in this review. Headless source checks cannot verify the complete demo or physical-device behavior. | NOT TESTED | Complete the export checklist below and attach results for the exact artifact being promoted. |
@@ -129,7 +135,8 @@ fix, an arbitrary cooldown or a passing synthetic check is not grounds to close 
 - [ ] Record artifact name, commit SHA, Godot/export-template version, OS and input device.
 - [ ] Retest PR1 on the original reproduction paths; attach video or input/event logs.
 - [ ] Run INPUT-1 and SAVE-1/SAVE-2 in the exported build, including a cold relaunch.
-- [ ] Complete TRANSITION-1, JOURNAL-1, COLLISION-1 and PAUSE-1 acceptance checks.
+- [ ] Complete PAUSE-1 acceptance checks and resolve the COLLISION-1 scope mismatch.
+- [ ] Record TRANSITION-1, JOURNAL-1 and CONTROLLER-1 as deferred; schedule their implementation and acceptance checks only when that work resumes.
 - [ ] Confirm all P0 failures are closed and all P1 failures are closed or explicitly deferred.
 - [ ] Run the full demo route from a clean profile and from an existing version-1 save.
 - [ ] Review results for the exact demo artifact before promoting that revision to production.
