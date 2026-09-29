@@ -34,12 +34,15 @@ For the public demo we ship the vertical slice **plus**:
   room; relighting the lamp is the demo's closing beat.
 - **Journal** — discovered logs collect into a readable in-game journal.
 - **Controller support** — gamepad input map layered on the built-in actions.
-- **Wall collision** — ground-floor collision required by the M2 definition of done.
 - **Playtest fixes** — the round of fixes from the vertical-slice playtests.
 
 Everything past this list (chapters 2+, full soundtrack, cover art integration)
 is **out of demo scope** and deferred to the press/launch milestones. No crunch,
 but the Next Fest date is firm.
+
+**Scope mismatch:** M2's definition of done includes wall collision, but the
+locked demo list above does not. Confirm whether collision is required for the
+demo; it has not been added to the locked scope.
 
 ## Round 1 triage and demo release gate (2026-09-29)
 
@@ -66,7 +69,7 @@ closing the report. Proposed fixes and checks are on `fix/round1-demo-readiness`
 | SAVE-2 | P1 | The old writer truncated the live slot and reported success without checking write completion. Saves now write a temporary snapshot, check errors and replace the slot; invalid loads are rejected without mutating the live game, and Continue shows an error. | FIXED IN BRANCH — export QA pending | Successful overwrite and reload; failed write preserves previous slot; corrupted/unsupported saves show an error. Verify replacement semantics on each supported OS. |
 | TRANSITION-1 | P0 | Ground floor → lamp room is now wired, with a pre-transition autosave and readable confirmation. A load failure restores controls downstairs and retains the checkpoint. `lamp_room.gd` still has no player, puzzle or wired relight dialogue. | FAIL — lamp-room content remains incomplete | The transition/save flow passes focused checks; complete the playable lamp room and relight ending, then test the full exported route. |
 | JOURNAL-1 | P1 | Journal remains a storage scaffold: no autoload registration, discovery wiring, reader UI or persistence. | FAIL — implementation missing | Discover a log, read it in the journal, save/relaunch and retain it without duplicates. |
-| COLLISION-1 | P1 | Player only clamps to room bounds; `_resolve_walls()` is a stub and movement does not call it. | FAIL — implementation missing | Ground-floor walls block movement with keyboard and stick, including diagonal approaches. |
+| COLLISION-1 | Scope pending | Player only clamps to room bounds; `_resolve_walls()` is a stub. M2 includes collision, but the locked list omits it. | SCOPE MISMATCH — decision needed | Resolve the scope mismatch before treating collision as a demo release blocker. |
 | PAUSE-1 | P1 | Reproduced: Esc clears `_paused` but leaves `PauseLayer` and Resume focus alive. In the headless repro, the next Enter reached both the old GUI and gameplay; it was not swallowed. Esc/B and Resume now share immediate focus release and overlay teardown. This is a separate verified defect, not proof of PR1's cause. | FIXED IN BRANCH — export QA pending | Open and close pause repeatedly with Esc/B and Resume; overlay disappears, focus clears and the next game input works. |
 | BUILD-1 | P0 | No packaged demo was supplied or exported in this review. Headless source checks cannot verify the complete demo or physical-device behavior. | NOT TESTED | Complete the export checklist below and attach results for the exact artifact being promoted. |
 
