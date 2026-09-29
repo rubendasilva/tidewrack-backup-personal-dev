@@ -60,14 +60,14 @@ closing the report. Proposed fixes and checks are on `fix/round1-demo-readiness`
 
 | ID | Priority | Finding / evidence | Status | Acceptance to close |
 |----|----------|--------------------|--------|---------------------|
-| PR1 | P0 | Yuki and Callum report the first input after dialogue closes being consumed at Cape Marrow Light. Baseline radio/gamepad close and next input passed headless checks; the exact reported symptom is not reproduced. Dialogue teardown now stops typing and detaches focused choices immediately. | OPEN — playtest retest needed | On the reported build/path, finish logbook and radio branches with Enter, Space and gamepad A. The close press must not reopen dialogue; the next fresh press must interact, and movement must respond immediately. Retest both reporters' reproduction paths on the candidate export. |
+| PR1 | P0 | Yuki and Callum both hit this on keyboard: the first input after dialogue closes is consumed at Cape Marrow Light. Missing bindings do not explain a one-time lost press. With only bindings restored, the original dialogue code passed all logbook/radio branches and stair closure with Enter/Space; the exact reported symptom is still not reproduced. Teardown cleanup is defensive, not a confirmed PR1 fix. | OPEN — keyboard trace needed | Identify the swallowed key and exact build/path. Capture an opt-in input trace (README). The close press must not reopen dialogue; the next fresh press must interact, and movement must respond immediately. Retest both reporters' paths on the candidate export. |
 | INPUT-1 | P0 | `project.godot` replaced keyboard actions with gamepad-only events. Baseline Enter failed; keyboard bindings have been restored alongside controller bindings. | FIXED IN BRANCH — export QA pending | Enter/Space, Esc, arrows, stick and A/B all work in the same exported build. |
 | SAVE-1 | P1 | Dmitri reports ambiguity before the lighthouse transition. Existing saves contain room + story flags, not player position; Continue respawns at the ground-floor entrance. Pause text now explains this manual-save contract and names the saved room. | FIXED IN BRANCH — player QA pending | Save at the stair, quit/relaunch, Continue and verify all branch flags, including false values. The room/entrance behavior must match the displayed text. Confirm the explanation is clear to Dmitri. |
 | SAVE-2 | P1 | The old writer truncated the live slot and reported success without checking write completion. Saves now write a temporary snapshot, check errors and replace the slot; invalid loads are rejected without mutating the live game, and Continue shows an error. | FIXED IN BRANCH — export QA pending | Successful overwrite and reload; failed write preserves previous slot; corrupted/unsupported saves show an error. Verify replacement semantics on each supported OS. |
 | TRANSITION-1 | P0 | `keeper_intro.json:door` still ends with placeholder text. `game.gd` has no lamp-room scene-change path; `lamp_room.gd` has no player, puzzle or wired relight dialogue. There is no transition autosave to inspect yet. | FAIL — implementation missing | Walk ground floor → lamp room → relight ending. Define the checkpoint/autosave timing before wiring the transition; test save/reload immediately before and after it and after a save failure. |
 | JOURNAL-1 | P1 | Journal remains a storage scaffold: no autoload registration, discovery wiring, reader UI or persistence. | FAIL — implementation missing | Discover a log, read it in the journal, save/relaunch and retain it without duplicates. |
 | COLLISION-1 | P1 | Player only clamps to room bounds; `_resolve_walls()` is a stub and movement does not call it. | FAIL — implementation missing | Ground-floor walls block movement with keyboard and stick, including diagonal approaches. |
-| PAUSE-1 | P1 | Static inspection: Esc toggles `_paused` off but only the Resume button frees `PauseLayer`, leaving an overlay/focus owner in gameplay. | OPEN — reproduce and fix | Open and close pause repeatedly with Esc/B and Resume; overlay disappears and the next game input works. |
+| PAUSE-1 | P1 | Reproduced: Esc clears `_paused` but leaves `PauseLayer` and Resume focus alive. In the headless repro, the next Enter reached both the old GUI and gameplay; it was not swallowed. Esc/B and Resume now share immediate focus release and overlay teardown. This is a separate verified defect, not proof of PR1's cause. | FIXED IN BRANCH — export QA pending | Open and close pause repeatedly with Esc/B and Resume; overlay disappears, focus clears and the next game input works. |
 | BUILD-1 | P0 | No packaged demo was supplied or exported in this review. Headless source checks cannot verify the complete demo or physical-device behavior. | NOT TESTED | Complete the export checklist below and attach results for the exact artifact being promoted. |
 
 Priorities: P0 blocks the demo release; P1 must be fixed or explicitly deferred
@@ -78,6 +78,11 @@ than treating playtest reporters as implementers.
 
 - Godot **4.3 stable**, Linux x86_64, headless: resource import and script loading
   succeeded; **82 regression assertions passed, 0 failed**.
+- Additional keyboard suite: **50 assertions passed, 0 failed**. Covers all four
+  logbook branch combinations, both radio branches and the stair with Enter and
+  Space, key down/up on separate frames, held-key echo and pause focus teardown.
+  Baseline with only keyboard bindings restored: **49 passed, 1 failed**; the
+  failure was leftover pause focus, not a lost post-dialogue press.
 - `python3 tests/validate_dialogue.py`: both production dialogue graphs valid,
   zero warnings. This validates graph structure, not scene wiring.
 - Input tests dispatch Enter, Space and synthetic gamepad A through the
@@ -90,6 +95,13 @@ than treating playtest reporters as implementers.
   **manual room-checkpoint** behavior, not a working lighthouse transition.
 - Not performed: interactive visual QA, physical gamepad playtest, exported
   builds, other operating systems, full lamp-room route or production promotion.
+
+PR1 trace follow-up: distinguish an actual fresh key down from an echo or key
+release. For Enter/Space, inspect `gui_seen`, dialogue `handled`/`reveal_only`,
+`blocked_by_dialogue`, `blocked_by_pause` and `no_target`. For movement arrows,
+`player.gd` polls `Input.get_vector`, so GUI event handling alone does not explain
+lost movement; inspect `can_move`, pause state and the raw key event. A binding
+fix, an arbitrary cooldown or a passing synthetic check is not grounds to close PR1.
 
 ### Export checklist and failure record
 
@@ -107,5 +119,6 @@ made; attach the later passing result before changing its status to verified.
 | Build / commit | Case ID | OS / device | Steps and expected result | Actual result / evidence | Status | Owner | Verified by / date |
 |----------------|---------|-------------|---------------------------|--------------------------|--------|-------|--------------------|
 | `8c9b1e4` source | INPUT-1 | Linux / synthetic Enter | Approach radio, press Enter; dialogue opens. | No dialogue; baseline headless assertion failed. | Fix in branch; export retest pending | Unassigned | Headless regression run, 2026-09-29 |
-| Round 1 build unknown | PR1 | Not supplied | Close dialogue at Cape Marrow Light; next input works. | First input consumed, reported by Yuki and Callum. | Open; need build/device/path evidence | Unassigned | Not verified |
+| Round 1 build unknown | PR1 | OS unknown / keyboard | Close dialogue at Cape Marrow Light; next input works. | First input consumed, reported by Yuki and Callum. | Open; need build/key/path trace | Unassigned | Not verified |
+| `8c9b1e4` + restored keyboard map | PAUSE-1 | Linux / synthetic Esc, Enter | Open pause, dismiss with Esc; focus clears. | Resume retains focus; next Enter reaches both old GUI and gameplay. | Fixed in branch; export retest pending | Unassigned | Keyboard regression run, 2026-09-29 |
 | Round 1 build unknown | SAVE-1 | Not supplied | Save before lighthouse transition; resume behavior is clear. | Ambiguous save, reported by Dmitri. | Copy clarified; player retest pending | Unassigned | Not verified |

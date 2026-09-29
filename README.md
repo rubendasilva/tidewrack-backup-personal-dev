@@ -47,7 +47,7 @@ failed loads show a message and keep the save file.
 
 ```
 tidewrack/
-├── project.godot            # engine config; registers the two autoloads
+├── project.godot            # engine config; registers autoloads
 ├── scenes/                  # thin .tscn wrappers (root node + script)
 │   ├── main_menu.tscn
 │   ├── game.tscn            # the vertical-slice level
@@ -102,6 +102,9 @@ godot --headless --editor --path . --quit
 
 # Input, focus, manual-save and load-failure regressions
 godot --headless --path . tests/test_demo.tscn
+
+# Full keyboard dialogue routes, key repeat/release and pause focus
+godot --headless --path . tests/test_pr1_keyboard.tscn
 ```
 
 The regression suite uses real viewport event dispatch for Enter, Space and
@@ -111,6 +114,22 @@ the final `Demo checks` result must report zero failures. A missing final result
 a script error or a nonzero exit is a failed run. These headless checks do not
 replace exported-build testing with a physical controller; see the milestone
 checklist for the remaining gates.
+
+For PR1 playtest reproduction, launch with an opt-in local input trace:
+
+```bash
+godot --path . -- --trace-input > pr1-input.log 2>&1
+```
+
+Record the exact build SHA, OS, affected key and reproduction steps alongside
+the log. `PR1_INPUT` records correlate each event ID with raw press/release/echo,
+GUI focus, dialogue visibility/state, typewriter state, pause/movement state,
+interaction targets and handling decisions. `gui_seen` means a control received
+the event, not that it consumed it; `handled` marks dialogue consumption.
+`reveal_only` identifies typewriter fast-forward, and `no_target` identifies an
+interaction with no cached target. The trace is disabled by default, prints
+locally and does not log dialogue text or save contents. It does not change
+input routing or add a delay after dialogue closes.
 
 ## Steam Next Fest demo
 

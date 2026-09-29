@@ -16,6 +16,7 @@ config/icon="res://icon.svg"
 
 GameState="*res://scripts/autoload/game_state.gd"
 DialogueManager="*res://scripts/autoload/dialogue_manager.gd"
+InputTrace="*res://scripts/autoload/input_trace.gd"
 
 [display]
 

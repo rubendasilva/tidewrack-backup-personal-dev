@@ -12,6 +12,7 @@ var _interactables: Array[Interactable] = []
 var _prompt: Label
 var _nearest: Interactable = null
 var _paused: bool = false
+var _pause_layer: CanvasLayer
 
 
 func _ready() -> void:
@@ -22,6 +23,7 @@ func _ready() -> void:
 
 	var dialogue_box := preload("res://scenes/ui/dialogue_box.tscn").instantiate()
 	add_child(dialogue_box)
+	InputTrace.bind_game(self, dialogue_box)
 
 	DialogueManager.dialogue_started.connect(func(): _set_movement(false))
 	DialogueManager.dialogue_finished.connect(func(): _set_movement(true))
@@ -123,19 +125,25 @@ func _find_nearest() -> Interactable:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
+		InputTrace.record("game", "pause_toggle", event)
 		_toggle_pause()
 		get_viewport().set_input_as_handled()
 		return
 	if _paused or DialogueManager.is_active:
+		InputTrace.record("game", "blocked_by_pause" if _paused else "blocked_by_dialogue", event)
 		return
 	if event.is_action_pressed("ui_accept") and _nearest != null:
+		InputTrace.record("game", "interact", event)
 		_nearest.interact()
 		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("ui_accept"):
+		InputTrace.record("game", "no_target", event)
 
 
 func _set_movement(enabled: bool) -> void:
 	if _player != null:
 		_player.can_move = enabled and not _paused
+		InputTrace.record("game", "movement_updated")
 
 
 func _toggle_pause() -> void:
@@ -145,6 +153,22 @@ func _toggle_pause() -> void:
 	_set_movement(not _paused)
 	if _paused:
 		_show_pause_menu()
+	else:
+		_close_pause_menu()
+
+
+func _close_pause_menu() -> void:
+	if is_instance_valid(_pause_layer):
+		# Detach now: queue_free alone keeps the old GUI in the input path
+		# until the end of the frame. Esc/B and Resume must share teardown.
+		var focus := get_viewport().gui_get_focus_owner()
+		if focus != null and _pause_layer.is_ancestor_of(focus):
+			focus.release_focus()
+		remove_child(_pause_layer)
+		_pause_layer.queue_free()
+		_pause_layer = null
+	_paused = false
+	_set_movement(true)
 
 
 func _show_pause_menu() -> void:
@@ -152,6 +176,7 @@ func _show_pause_menu() -> void:
 	overlay.name = "PauseOverlay"
 	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	var layer := CanvasLayer.new()
+	_pause_layer = layer
 	layer.layer = 20
 	layer.name = "PauseLayer"
 	layer.add_child(overlay)
@@ -171,10 +196,7 @@ func _show_pause_menu() -> void:
 	center.add_child(vbox)
 
 	var resume := _menu_button("Resume")
-	resume.pressed.connect(func():
-		layer.queue_free()
-		_paused = false
-		_set_movement(true))
+	resume.pressed.connect(_close_pause_menu)
 	vbox.add_child(resume)
 
 	var save := _menu_button("Save — ground floor")
