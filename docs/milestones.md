@@ -60,7 +60,7 @@ closing the report. Proposed fixes and checks are on `fix/round1-demo-readiness`
 
 | ID | Priority | Finding / evidence | Status | Acceptance to close |
 |----|----------|--------------------|--------|---------------------|
-| PR1 | P0 | Yuki and Callum both hit this on keyboard: the first input after dialogue closes is consumed at Cape Marrow Light. Missing bindings do not explain a one-time lost press. With only bindings restored, the original dialogue code passed all logbook/radio branches and stair closure with Enter/Space; the exact reported symptom is still not reproduced. Teardown cleanup is defensive, not a confirmed PR1 fix. | OPEN — keyboard trace needed | Identify the swallowed key and exact build/path. Capture an opt-in input trace (README). The close press must not reopen dialogue; the next fresh press must interact, and movement must respond immediately. Retest both reporters' paths on the candidate export. |
+| PR1 | P0 | Yuki closed the final line with Enter, tapped a movement key with no response, then the next press worked. Both reporters used `v0.1.0-playtest1`; Callum is confirmed on keyboard but his exact sequence is not yet supplied. This tag/release is absent from the connected backup. Binding and focus fixes do not establish the cause. | OPEN — locate playtest source | Resolve `v0.1.0-playtest1` to a commit/build. Trace final Enter → movement key down/up → first physics tick, including `can_move`, pause state and input vector. The first movement tap must work without a second press. |
 | INPUT-1 | P0 | `project.godot` replaced keyboard actions with gamepad-only events. Baseline Enter failed; keyboard bindings have been restored alongside controller bindings. | FIXED IN BRANCH — export QA pending | Enter/Space, Esc, arrows, stick and A/B all work in the same exported build. |
 | SAVE-1 | P1 | Dmitri reports ambiguity before the lighthouse transition. Existing saves contain room + story flags, not player position; Continue respawns at the ground-floor entrance. Pause text now explains this manual-save contract and names the saved room. | FIXED IN BRANCH — player QA pending | Save at the stair, quit/relaunch, Continue and verify all branch flags, including false values. The room/entrance behavior must match the displayed text. Confirm the explanation is clear to Dmitri. |
 | SAVE-2 | P1 | The old writer truncated the live slot and reported success without checking write completion. Saves now write a temporary snapshot, check errors and replace the slot; invalid loads are rejected without mutating the live game, and Continue shows an error. | FIXED IN BRANCH — export QA pending | Successful overwrite and reload; failed write preserves previous slot; corrupted/unsupported saves show an error. Verify replacement semantics on each supported OS. |
@@ -96,7 +96,14 @@ than treating playtest reporters as implementers.
 - Not performed: interactive visual QA, physical gamepad playtest, exported
   builds, other operating systems, full lamp-room route or production promotion.
 
-PR1 trace follow-up: distinguish an actual fresh key down from an echo or key
+PR1 movement follow-up (report clarified): the available source unlocks movement
+synchronously on `dialogue_finished` and polls held movement keys in
+`_physics_process`. Investigate the playtest build's unlock timing and whether the
+first down/up pair falls entirely between physics polls; these are hypotheses,
+not confirmed causes. Do not equate `v0.1-vslice` with `v0.1.0-playtest1`.
+No suites were rerun for this clarification.
+
+General trace reference: distinguish an actual fresh key down from an echo or key
 release. For Enter/Space, inspect `gui_seen`, dialogue `handled`/`reveal_only`,
 `blocked_by_dialogue`, `blocked_by_pause` and `no_target`. For movement arrows,
 `player.gd` polls `Input.get_vector`, so GUI event handling alone does not explain
@@ -119,6 +126,6 @@ made; attach the later passing result before changing its status to verified.
 | Build / commit | Case ID | OS / device | Steps and expected result | Actual result / evidence | Status | Owner | Verified by / date |
 |----------------|---------|-------------|---------------------------|--------------------------|--------|-------|--------------------|
 | `8c9b1e4` source | INPUT-1 | Linux / synthetic Enter | Approach radio, press Enter; dialogue opens. | No dialogue; baseline headless assertion failed. | Fix in branch; export retest pending | Unassigned | Headless regression run, 2026-09-29 |
-| Round 1 build unknown | PR1 | OS unknown / keyboard | Close dialogue at Cape Marrow Light; next input works. | First input consumed, reported by Yuki and Callum. | Open; need build/key/path trace | Unassigned | Not verified |
+| `v0.1.0-playtest1` (source commit unavailable) | PR1 | OS unknown / keyboard | Yuki: Enter closes final line; tap a movement key. | No movement on first tap; next press works. Callum also reported keyboard input loss. | Open; exact source tag/release absent from connected backup | Unassigned | Not verified |
 | `8c9b1e4` + restored keyboard map | PAUSE-1 | Linux / synthetic Esc, Enter | Open pause, dismiss with Esc; focus clears. | Resume retains focus; next Enter reaches both old GUI and gameplay. | Fixed in branch; export retest pending | Unassigned | Keyboard regression run, 2026-09-29 |
 | Round 1 build unknown | SAVE-1 | Not supplied | Save before lighthouse transition; resume behavior is clear. | Ambiguous save, reported by Dmitri. | Copy clarified; player retest pending | Unassigned | Not verified |
