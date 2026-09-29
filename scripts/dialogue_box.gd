@@ -132,10 +132,18 @@ func _on_choice_pressed(index: int) -> void:
 
 
 func _on_finished() -> void:
+	# Stop pending typewriter work before returning control to gameplay.
+	_typing = false
+	_has_choices = false
+	_full_text = ""
+	_revealed = 0.0
 	_clear_choices()
 	_root.hide()
 
 
 func _clear_choices() -> void:
 	for child in _choice_box.get_children():
+		# queue_free() is deferred; remove focus and input ownership now.
+		(child as Button).release_focus()
+		_choice_box.remove_child(child)
 		child.queue_free()

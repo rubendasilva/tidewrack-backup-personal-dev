@@ -177,12 +177,17 @@ func _show_pause_menu() -> void:
 		_set_movement(true))
 	vbox.add_child(resume)
 
-	var save := _menu_button("Save")
+	var save := _menu_button("Save — ground floor")
 	save.pressed.connect(func():
 		GameState.current_scene = scene_file_path
 		var ok := GameState.save_game()
-		save.text = "Saved ✓" if ok else "Save failed")
+		save.text = "Saved — ground floor ✓" if ok else "Save failed — retry")
 	vbox.add_child(save)
+
+	var save_hint := Label.new()
+	save_hint.text = "Manual save: story choices and current room.\nContinue starts at the room's entrance.\nThe stair does not autosave."
+	save_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(save_hint)
 
 	var settings := _menu_button("Settings")
 	settings.pressed.connect(func():

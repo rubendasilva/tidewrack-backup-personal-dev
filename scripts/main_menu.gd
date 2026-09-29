@@ -4,6 +4,7 @@ extends Control
 const GAME_SCENE := "res://scenes/game.tscn"
 
 var _continue_button: Button
+var _save_status: Label
 
 
 func _ready() -> void:
@@ -50,6 +51,11 @@ func _build_ui() -> void:
 	_continue_button.pressed.connect(_on_continue)
 	vbox.add_child(_continue_button)
 
+	_save_status = Label.new()
+	_save_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_save_status.hide()
+	vbox.add_child(_save_status)
+
 	var settings_button := _make_button("Settings")
 	settings_button.pressed.connect(_on_settings)
 	vbox.add_child(settings_button)
@@ -82,7 +88,11 @@ func _on_new_game() -> void:
 
 func _on_continue() -> void:
 	if GameState.load_game():
-		get_tree().change_scene_to_file(GameState.current_scene)
+		var error := get_tree().change_scene_to_file(GameState.current_scene)
+		if error == OK:
+			return
+	_save_status.text = "Could not load the save. Your save file has been kept."
+	_save_status.show()
 
 
 func _on_settings() -> void:
