@@ -114,28 +114,42 @@ func _on_text_complete() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not DialogueManager.is_active or _has_choices:
+		InputTrace.record("dialogue", "inactive" if not DialogueManager.is_active else "choices_own_input", event)
 		return
 	if event.is_action_pressed("ui_accept"):
 		if _typing:
+			InputTrace.record("dialogue", "reveal_only", event)
 			# Fast-forward the typewriter on the first press.
 			_revealed = float(_full_text.length())
 			_text_label.text = _full_text
 			_typing = false
 			_on_text_complete()
 		else:
+			InputTrace.record("dialogue", "advance", event)
 			DialogueManager.advance()
 		get_viewport().set_input_as_handled()
+		InputTrace.record("dialogue", "handled", event)
 
 
 func _on_choice_pressed(index: int) -> void:
+	InputTrace.record("dialogue", "choice_activated")
 	DialogueManager.choose(index)
 
 
 func _on_finished() -> void:
+	# Stop pending typewriter work before returning control to gameplay.
+	_typing = false
+	_has_choices = false
+	_full_text = ""
+	_revealed = 0.0
 	_clear_choices()
 	_root.hide()
+	InputTrace.record("dialogue", "finished")
 
 
 func _clear_choices() -> void:
 	for child in _choice_box.get_children():
+		# queue_free() is deferred; remove focus and input ownership now.
+		(child as Button).release_focus()
+		_choice_box.remove_child(child)
 		child.queue_free()

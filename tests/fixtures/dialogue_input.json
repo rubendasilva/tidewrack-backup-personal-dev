@@ -1,0 +1,6 @@
+{
+  "start": {
+    "text": "Terminal choice for input regression coverage.",
+    "choices": [{"text": "Close dialogue", "next": null}]
+  }
+}

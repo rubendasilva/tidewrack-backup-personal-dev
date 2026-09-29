@@ -6,9 +6,9 @@ rowed out into the fog eleven days ago and did not come back.
 
 Built solo by **Fogline Games** (Seattle) in **Godot 4**, shipping to Steam.
 
-> **Status:** Public-demo candidate (Steam Next Fest). Vertical slice +
-> branching conversation with save/load. See [`docs/milestones.md`](docs/milestones.md)
-> for the road to launch.
+> **Status:** Public-demo work in progress. The tagged candidate still has
+> unfinished demo systems and open playtest blockers. See
+> [`docs/milestones.md`](docs/milestones.md) for failures and release gates.
 
 ## Controls
 
@@ -37,11 +37,19 @@ godot --path .
 The main scene is `scenes/main_menu.tscn`. Saves are written to Godot's
 `user://save.json` (per-OS user data dir).
 
+The pause menu saves manually. The lamp-room stair also autosaves a
+**ground-floor checkpoint before switching rooms**, then shows **Game saved**
+for two seconds with a reminder that Continue returns to the ground-floor
+entrance. Saves retain story choices and the room, not the player's position.
+A failed autosave keeps the player downstairs, preserves the previous slot
+and shows a retry message. If the room cannot load after saving, the player
+also stays downstairs and the successful checkpoint remains available.
+
 ## Project layout
 
 ```
 tidewrack/
-├── project.godot            # engine config; registers the two autoloads
+├── project.godot            # engine config; registers autoloads
 ├── scenes/                  # thin .tscn wrappers (root node + script)
 │   ├── main_menu.tscn
 │   ├── game.tscn            # the vertical-slice level
@@ -91,20 +99,48 @@ Any node can set story flags via `"set_flag"`, which `GameState` persists.
 # Validate every dialogue graph (targets resolve, has an ending, no orphans)
 python3 tests/validate_dialogue.py
 
-# In-engine checks (requires Godot on PATH)
-godot --headless --path . --check-only   # parse all scripts
+# Import resources and register script classes (requires Godot 4.3+ on PATH)
+godot --headless --editor --path . --quit
+
+# Input, focus, manual-save and load-failure regressions
+godot --headless --path . tests/test_demo.tscn
+
+# Full keyboard dialogue routes, key repeat/release and pause focus
+godot --headless --path . tests/test_pr1_keyboard.tscn
+
+# Focused stair autosave, visible confirmation, transition and failure cases
+godot --headless --path . tests/test_stair_autosave.tscn
 ```
 
-> The GDScript in this build was authored without a local Godot install, so it
-> has been checked statically and via the dialogue validator, **not** yet run in
-> the engine. First engine open may surface minor fixups — tracked in the issue
-> list.
+The regression suite uses real viewport event dispatch for Enter, Space and
+synthetic gamepad events. Save tests use a unique test slot and never modify
+`user://save.json`. Deliberately invalid saves emit expected error messages;
+the final `Demo checks` result must report zero failures. A missing final result,
+a script error or a nonzero exit is a failed run. These headless checks do not
+replace exported-build testing with a physical controller; see the milestone
+checklist for the remaining gates.
+
+For PR1 playtest reproduction, launch with an opt-in local input trace:
+
+```bash
+godot --path . -- --trace-input > pr1-input.log 2>&1
+```
+
+Record the exact build SHA, OS, affected key and reproduction steps alongside
+the log. `PR1_INPUT` records correlate each event ID with raw press/release/echo,
+GUI focus, dialogue visibility/state, typewriter state, pause/movement state,
+interaction targets and handling decisions. `gui_seen` means a control received
+the event, not that it consumed it; `handled` marks dialogue consumption.
+`reveal_only` identifies typewriter fast-forward, and `no_target` identifies an
+interaction with no cached target. The trace is disabled by default, prints
+locally and does not log dialogue text or save contents. It does not change
+input routing or add a delay after dialogue closes.
 
 ## Steam Next Fest demo
 
 The public demo (target: **Steam Next Fest**) extends the vertical slice with
 the lamp-room chapter, a discovered-logs journal, and controller support. Demo
-scope is locked in [`docs/milestones.md`](docs/milestones.md); the build is
-feature-frozen and tagged `v0.2-demo-rc`.
+scope is locked in [`docs/milestones.md`](docs/milestones.md). The historical
+`v0.2-demo-rc` tag does not imply that the demo release gates have passed.
 
 Demo controls add a gamepad (analog stick + A/B) on top of the keyboard bindings.
