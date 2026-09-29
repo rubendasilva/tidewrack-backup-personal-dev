@@ -63,12 +63,21 @@ Source inspected: `rubendasilva/tidewrack-backup-personal-dev`, baseline
 `8c9b1e4` (`v0.2-demo-rc`). At the start of review, this connected backup had no
 existing pull request #1.
 **PR1 below is the playtest report label, not a verified GitHub PR number.**
-If the playtest used another branch or build, record that exact revision before
-closing the report. Proposed fixes and checks are on `fix/round1-demo-readiness`.
+Historical confirmation applies to the named playtest build; record the exact
+demo artifact before marking its verification complete. Proposed fixes and
+checks are on `fix/round1-demo-readiness`.
+
+Team evidence reviewed today: in the "Tidewrack Round 2 Playtest - Build Access
+& Testing Instructions" email thread, Isla's **2026-06-05** summary reports
+Amara's targeted PR1 retest passed in `v0.1.1-playtest2`. Lena's **2026-06-03**
+email also reports no Round 1 stuck-advance issues. These later results concern
+a different build from the Round 1 reports; they do not establish a regression.
+The historical fix has not been connected to this checkout, and the current
+branch's bindings change is not credited as the PR1 fix.
 
 | ID | Priority | Finding / evidence | Status | Acceptance to close |
 |----|----------|--------------------|--------|---------------------|
-| PR1 | P0 | Yuki closed the final line with Enter, tapped a movement key with no response, then the next press worked. Both reporters used `v0.1.0-playtest1`; Callum is confirmed on keyboard but his exact sequence is not yet supplied. This tag/release is absent from the connected backup. Binding and focus fixes do not establish the cause. | OPEN — tracing available | Original build is unavailable; continue from this repository. Trace final Enter → movement key down/up → first physics tick, including `can_move`, pause state and input vector. The first movement tap must work without a second press. |
+| PR1 | P0 verification | Yuki closed the final line with Enter, tapped a movement key with no response, then the next press worked. Both reporters used `v0.1.0-playtest1`; Callum is confirmed on keyboard but his exact sequence is not yet supplied. This tag/release is absent from the connected backup. Isla later reports Amara's clean retest in `v0.1.1-playtest2`, supported by Lena's observations. The historical fix's relationship to this checkout is unverified. | CONFIRMED FIXED IN ROUND 2 per team reports — current demo build verification pending | Record the exact demo artifact and retest final Enter → first movement tap on keyboard; it must work without a second press. Retain opt-in input tracing and attach the result. Existing tracing records key events and movement locks, not the input vector at each physics tick. |
 | INPUT-1 | P0 | `project.godot` replaced keyboard actions with gamepad-only events. Baseline Enter failed; keyboard bindings have been restored alongside controller bindings. | FIXED IN BRANCH — export QA pending | Enter/Space, Esc, arrows, stick and A/B all work in the same exported build. |
 | SAVE-1 | P1 | Stair interaction now autosaves room + story flags before switching to the lamp room. A screen-space **Game saved** panel stays visible for two seconds and names the ground-floor entrance checkpoint. Save failure preserves the previous slot, keeps the player downstairs and offers a retry. | FIXED IN BRANCH — player/export QA pending | Interact with stair, read confirmation, enter lamp room, quit/relaunch and Continue at the ground-floor entrance with all choices intact. Repeat with a failed save; no transition or false success message. Confirm readability with Dmitri. |
 | SAVE-2 | P1 | The old writer truncated the live slot and reported success without checking write completion. Saves now write a temporary snapshot, check errors and replace the slot; invalid loads are rejected without mutating the live game, and Continue shows an error. | FIXED IN BRANCH — export QA pending | Successful overwrite and reload; failed write preserves previous slot; corrupted/unsupported saves show an error. Verify replacement semantics on each supported OS. |
@@ -106,8 +115,9 @@ Earlier verification, before the stair transition was wired:
   zero warnings. This validates graph structure, not scene wiring.
 - Input tests dispatch Enter, Space and synthetic gamepad A through the
   viewport: linear/choice dialogue, terminal choices, close/reopen, restored
-  movement and no leftover focus. The baseline first-input report remains
-  unconfirmed; passing these cases does not close PR1.
+  movement and no leftover focus. The reported first-input failure was not
+  reproduced in this checkout; passing these cases does not verify the current
+  demo artifact. Round 2's team confirmation is recorded separately above.
 - Save tests exercise the pause Save button at the stair, room/flag restoration,
   entrance respawn, failed-write preservation, overwrite, invalid data, legacy
   version-1 saves and visible Continue failure. These earlier checks covered
@@ -119,21 +129,23 @@ PR1 movement follow-up (report clarified): the available source unlocks movement
 synchronously on `dialogue_finished` and polls held movement keys in
 `_physics_process`. There is no demonstrated close/unlock timing gap. A tap
 between physics polls is a general polling possibility, not an established
-explanation for PR1. The original build is unavailable; leave PR1 open and
-use the repository's tracing to gather evidence. Do not equate `v0.1-vslice`
-with `v0.1.0-playtest1`.
+explanation for PR1. The original build is unavailable. Keep the team-confirmed
+Round 2 fix distinct from pending current demo verification; use the repository's
+tracing for the targeted Enter → movement check. Do not equate `v0.1-vslice`
+with `v0.1.0-playtest1` or assume this checkout contains the Round 2 fix.
 
 General trace reference: distinguish an actual fresh key down from an echo or key
 release. For Enter/Space, inspect `gui_seen`, dialogue `handled`/`reveal_only`,
 `blocked_by_dialogue`, `blocked_by_pause` and `no_target`. For movement arrows,
 `player.gd` polls `Input.get_vector`, so GUI event handling alone does not explain
 lost movement; inspect `can_move`, pause state and the raw key event. A binding
-fix, an arbitrary cooldown or a passing synthetic check is not grounds to close PR1.
+fix, an arbitrary cooldown or a passing synthetic check does not establish the
+historical fix's cause or verify the current demo artifact.
 
 ### Export checklist and failure record
 
 - [ ] Record artifact name, commit SHA, Godot/export-template version, OS and input device.
-- [ ] Retest PR1 on the original reproduction paths; attach video or input/event logs.
+- [ ] Verify PR1's final Enter → first movement tap path in the exact current demo artifact; attach video or input/event logs. Preserve the separate Round 2 confirmation.
 - [ ] Run INPUT-1 and SAVE-1/SAVE-2 in the exported build, including a cold relaunch.
 - [ ] Complete PAUSE-1 acceptance checks and resolve the COLLISION-1 scope mismatch.
 - [ ] Record TRANSITION-1, JOURNAL-1 and CONTROLLER-1 as deferred; schedule their implementation and acceptance checks only when that work resumes.
@@ -147,6 +159,7 @@ made; attach the later passing result before changing its status to verified.
 | Build / commit | Case ID | OS / device | Steps and expected result | Actual result / evidence | Status | Owner | Verified by / date |
 |----------------|---------|-------------|---------------------------|--------------------------|--------|-------|--------------------|
 | `8c9b1e4` source | INPUT-1 | Linux / synthetic Enter | Approach radio, press Enter; dialogue opens. | No dialogue; baseline headless assertion failed. | Fix in branch; export retest pending | Unassigned | Headless regression run, 2026-09-29 |
-| `v0.1.0-playtest1` (source commit unavailable) | PR1 | OS unknown / keyboard | Yuki: Enter closes final line; tap a movement key. | No movement on first tap; next press works. Callum also reported keyboard input loss. | Open; exact source tag/release absent from connected backup | Unassigned | Not verified |
+| `v0.1.0-playtest1` (source commit unavailable) | PR1 | OS unknown / keyboard | Yuki: Enter closes final line; tap a movement key. | No movement on first tap; next press works. Callum also reported keyboard input loss. | Historical failure preserved; later Round 2 fix confirmed per team reports | Unassigned | Original failure not reproduced in this checkout |
+| `v0.1.1-playtest2` (fix commit not linked to this checkout) | PR1 | Not supplied | Targeted dialogue-advance retest reported by the team; exact key sequence not supplied. | Isla reports Amara's clean pass; Lena also reports no Round 1 stuck-advance issues. | Confirmed fixed in Round 2 per team reports; current demo build verification pending | Unassigned | Amara, via Isla's 2026-06-05 email; Lena's 2026-06-03 email |
 | `8c9b1e4` + restored keyboard map | PAUSE-1 | Linux / synthetic Esc, Enter | Open pause, dismiss with Esc; focus clears. | Resume retains focus; next Enter reaches both old GUI and gameplay. | Fixed in branch; export retest pending | Unassigned | Keyboard regression run, 2026-09-29 |
 | Round 1 build unknown | SAVE-1 | Not supplied | Save before lighthouse transition; resume behavior is clear. | Ambiguous save, reported by Dmitri. | Stair autosave + visible confirmation implemented; player retest pending | Unassigned | Not verified |
