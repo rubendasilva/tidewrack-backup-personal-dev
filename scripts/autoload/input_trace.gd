@@ -71,6 +71,7 @@ func record(owner: String, reason: String, event: InputEvent = null) -> void:
 			entry["axis_value"] = event.axis_value
 	if is_instance_valid(_game):
 		entry["paused"] = _game._paused
+		entry["transitioning"] = _game._transitioning
 		entry["can_move"] = _game._player.can_move
 		var cached: Node = _game._nearest
 		var current: Node = _game._find_nearest()

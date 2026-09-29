@@ -104,7 +104,7 @@ func _run() -> void:
 			await _route(0, choices, key)
 		for choices in [[0], [1]]:
 			await _route(1, choices, key)
-		await _route(2, [], key)
+		# The stair is now a guarded autosave/transition, tested separately.
 	await _held_key()
 	await _pause_repro()
 	print("PR1 keyboard checks: %d passed, %d failed" % [_checks - _failures, _failures])

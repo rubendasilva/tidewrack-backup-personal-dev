@@ -60,11 +60,11 @@ closing the report. Proposed fixes and checks are on `fix/round1-demo-readiness`
 
 | ID | Priority | Finding / evidence | Status | Acceptance to close |
 |----|----------|--------------------|--------|---------------------|
-| PR1 | P0 | Yuki closed the final line with Enter, tapped a movement key with no response, then the next press worked. Both reporters used `v0.1.0-playtest1`; Callum is confirmed on keyboard but his exact sequence is not yet supplied. This tag/release is absent from the connected backup. Binding and focus fixes do not establish the cause. | OPEN — locate playtest source | Resolve `v0.1.0-playtest1` to a commit/build. Trace final Enter → movement key down/up → first physics tick, including `can_move`, pause state and input vector. The first movement tap must work without a second press. |
+| PR1 | P0 | Yuki closed the final line with Enter, tapped a movement key with no response, then the next press worked. Both reporters used `v0.1.0-playtest1`; Callum is confirmed on keyboard but his exact sequence is not yet supplied. This tag/release is absent from the connected backup. Binding and focus fixes do not establish the cause. | OPEN — tracing available | Original build is unavailable; continue from this repository. Trace final Enter → movement key down/up → first physics tick, including `can_move`, pause state and input vector. The first movement tap must work without a second press. |
 | INPUT-1 | P0 | `project.godot` replaced keyboard actions with gamepad-only events. Baseline Enter failed; keyboard bindings have been restored alongside controller bindings. | FIXED IN BRANCH — export QA pending | Enter/Space, Esc, arrows, stick and A/B all work in the same exported build. |
-| SAVE-1 | P1 | Dmitri reports ambiguity before the lighthouse transition. Existing saves contain room + story flags, not player position; Continue respawns at the ground-floor entrance. Pause text now explains this manual-save contract and names the saved room. | FIXED IN BRANCH — player QA pending | Save at the stair, quit/relaunch, Continue and verify all branch flags, including false values. The room/entrance behavior must match the displayed text. Confirm the explanation is clear to Dmitri. |
+| SAVE-1 | P1 | Stair interaction now autosaves room + story flags before switching to the lamp room. A screen-space **Game saved** panel stays visible for two seconds and names the ground-floor entrance checkpoint. Save failure preserves the previous slot, keeps the player downstairs and offers a retry. | FIXED IN BRANCH — player/export QA pending | Interact with stair, read confirmation, enter lamp room, quit/relaunch and Continue at the ground-floor entrance with all choices intact. Repeat with a failed save; no transition or false success message. Confirm readability with Dmitri. |
 | SAVE-2 | P1 | The old writer truncated the live slot and reported success without checking write completion. Saves now write a temporary snapshot, check errors and replace the slot; invalid loads are rejected without mutating the live game, and Continue shows an error. | FIXED IN BRANCH — export QA pending | Successful overwrite and reload; failed write preserves previous slot; corrupted/unsupported saves show an error. Verify replacement semantics on each supported OS. |
-| TRANSITION-1 | P0 | `keeper_intro.json:door` still ends with placeholder text. `game.gd` has no lamp-room scene-change path; `lamp_room.gd` has no player, puzzle or wired relight dialogue. There is no transition autosave to inspect yet. | FAIL — implementation missing | Walk ground floor → lamp room → relight ending. Define the checkpoint/autosave timing before wiring the transition; test save/reload immediately before and after it and after a save failure. |
+| TRANSITION-1 | P0 | Ground floor → lamp room is now wired, with a pre-transition autosave and readable confirmation. A load failure restores controls downstairs and retains the checkpoint. `lamp_room.gd` still has no player, puzzle or wired relight dialogue. | FAIL — lamp-room content remains incomplete | The transition/save flow passes focused checks; complete the playable lamp room and relight ending, then test the full exported route. |
 | JOURNAL-1 | P1 | Journal remains a storage scaffold: no autoload registration, discovery wiring, reader UI or persistence. | FAIL — implementation missing | Discover a log, read it in the journal, save/relaunch and retain it without duplicates. |
 | COLLISION-1 | P1 | Player only clamps to room bounds; `_resolve_walls()` is a stub and movement does not call it. | FAIL — implementation missing | Ground-floor walls block movement with keyboard and stick, including diagonal approaches. |
 | PAUSE-1 | P1 | Reproduced: Esc clears `_paused` but leaves `PauseLayer` and Resume focus alive. In the headless repro, the next Enter reached both the old GUI and gameplay; it was not swallowed. Esc/B and Resume now share immediate focus release and overlay teardown. This is a separate verified defect, not proof of PR1's cause. | FIXED IN BRANCH — export QA pending | Open and close pause repeatedly with Esc/B and Resume; overlay disappears, focus clears and the next game input works. |
@@ -75,6 +75,16 @@ with an agreed scope change. Owners are unassigned; assign them at triage rather
 than treating playtest reporters as implementers.
 
 ### Verification recorded for this branch
+
+Latest stair change: **31 focused assertions passed, 0 failed** on Godot 4.3
+Linux headless. Checked save failure and retry, committed story flags, two-second
+confirmation and viewport layout, duplicate-input guard, actual scene switch,
+Continue back to the checkpoint, ordinary dialogue isolation and scene-load
+failure recovery. These tests use an isolated slot. The broader suites were not
+rerun for this change; their obsolete no-autosave/stair-dialogue assertions were
+removed because the stair is now covered by the dedicated suite.
+
+Earlier verification, before the stair transition was wired:
 
 - Godot **4.3 stable**, Linux x86_64, headless: resource import and script loading
   succeeded; **82 regression assertions passed, 0 failed**.
@@ -91,17 +101,18 @@ than treating playtest reporters as implementers.
   unconfirmed; passing these cases does not close PR1.
 - Save tests exercise the pause Save button at the stair, room/flag restoration,
   entrance respawn, failed-write preservation, overwrite, invalid data, legacy
-  version-1 saves and visible Continue failure. They confirm the current
-  **manual room-checkpoint** behavior, not a working lighthouse transition.
+  version-1 saves and visible Continue failure. These earlier checks covered
+  **manual room-checkpoint** behavior; stair autosave is covered above.
 - Not performed: interactive visual QA, physical gamepad playtest, exported
   builds, other operating systems, full lamp-room route or production promotion.
 
 PR1 movement follow-up (report clarified): the available source unlocks movement
 synchronously on `dialogue_finished` and polls held movement keys in
-`_physics_process`. Investigate the playtest build's unlock timing and whether the
-first down/up pair falls entirely between physics polls; these are hypotheses,
-not confirmed causes. Do not equate `v0.1-vslice` with `v0.1.0-playtest1`.
-No suites were rerun for this clarification.
+`_physics_process`. There is no demonstrated close/unlock timing gap. A tap
+between physics polls is a general polling possibility, not an established
+explanation for PR1. The original build is unavailable; leave PR1 open and
+use the repository's tracing to gather evidence. Do not equate `v0.1-vslice`
+with `v0.1.0-playtest1`.
 
 General trace reference: distinguish an actual fresh key down from an echo or key
 release. For Enter/Space, inspect `gui_seen`, dialogue `handled`/`reveal_only`,
@@ -128,4 +139,4 @@ made; attach the later passing result before changing its status to verified.
 | `8c9b1e4` source | INPUT-1 | Linux / synthetic Enter | Approach radio, press Enter; dialogue opens. | No dialogue; baseline headless assertion failed. | Fix in branch; export retest pending | Unassigned | Headless regression run, 2026-09-29 |
 | `v0.1.0-playtest1` (source commit unavailable) | PR1 | OS unknown / keyboard | Yuki: Enter closes final line; tap a movement key. | No movement on first tap; next press works. Callum also reported keyboard input loss. | Open; exact source tag/release absent from connected backup | Unassigned | Not verified |
 | `8c9b1e4` + restored keyboard map | PAUSE-1 | Linux / synthetic Esc, Enter | Open pause, dismiss with Esc; focus clears. | Resume retains focus; next Enter reaches both old GUI and gameplay. | Fixed in branch; export retest pending | Unassigned | Keyboard regression run, 2026-09-29 |
-| Round 1 build unknown | SAVE-1 | Not supplied | Save before lighthouse transition; resume behavior is clear. | Ambiguous save, reported by Dmitri. | Copy clarified; player retest pending | Unassigned | Not verified |
+| Round 1 build unknown | SAVE-1 | Not supplied | Save before lighthouse transition; resume behavior is clear. | Ambiguous save, reported by Dmitri. | Stair autosave + visible confirmation implemented; player retest pending | Unassigned | Not verified |

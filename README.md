@@ -37,11 +37,13 @@ godot --path .
 The main scene is `scenes/main_menu.tscn`. Saves are written to Godot's
 `user://save.json` (per-OS user data dir).
 
-Saving is manual, through the pause menu. It stores story choices and the
-current room; **Continue starts at that room's entrance**, not the saved player
-position. The lamp-room stair currently shows placeholder dialogue and does
-not change rooms or autosave. A failed save leaves the previous slot intact;
-failed loads show a message and keep the save file.
+The pause menu saves manually. The lamp-room stair also autosaves a
+**ground-floor checkpoint before switching rooms**, then shows **Game saved**
+for two seconds with a reminder that Continue returns to the ground-floor
+entrance. Saves retain story choices and the room, not the player's position.
+A failed autosave keeps the player downstairs, preserves the previous slot
+and shows a retry message. If the room cannot load after saving, the player
+also stays downstairs and the successful checkpoint remains available.
 
 ## Project layout
 
@@ -105,6 +107,9 @@ godot --headless --path . tests/test_demo.tscn
 
 # Full keyboard dialogue routes, key repeat/release and pause focus
 godot --headless --path . tests/test_pr1_keyboard.tscn
+
+# Focused stair autosave, visible confirmation, transition and failure cases
+godot --headless --path . tests/test_stair_autosave.tscn
 ```
 
 The regression suite uses real viewport event dispatch for Enter, Space and

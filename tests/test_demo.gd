@@ -147,10 +147,7 @@ func _save_checks() -> void:
 	_find_button(_game, "Resume").pressed.emit()
 	await get_tree().process_frame
 	await get_tree().process_frame
-	_tap()
-	_check(DialogueManager.is_active, "stair still opens its placeholder dialogue")
-	DialogueManager._finish()
-	_check(FileAccess.get_file_as_string(GameState._save_path) == saved_text, "stair does not silently autosave")
+	# Stair autosave and scene switching are covered by test_stair_autosave.tscn.
 	GameState.flags.clear()
 	_check(GameState.load_game(), "manual save loads")
 	_check(GameState.get_flag("trusted_edith", true) == false and GameState.get_flag("radioed_tom") == true, "Continue restores saved story choices")

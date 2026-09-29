@@ -6,6 +6,8 @@ extends Node2D
 const DIALOGUE := "res://data/dialogue/keeper_intro.json"
 const INTERACT_RADIUS := 90.0
 const ROOM := Rect2(120, 140, 1040, 460)
+const LAMP_ROOM_SCENE := "res://scenes/lamp_room.tscn"
+const SAVE_NOTICE_SECONDS := 2.0
 
 var _player: Player
 var _interactables: Array[Interactable] = []
@@ -13,6 +15,10 @@ var _prompt: Label
 var _nearest: Interactable = null
 var _paused: bool = false
 var _pause_layer: CanvasLayer
+var _transitioning: bool = false
+var _save_notice: PanelContainer
+var _save_notice_title: Label
+var _save_notice_detail: Label
 
 
 func _ready() -> void:
@@ -65,11 +71,13 @@ func _build_interactables() -> void:
 		Vector2(ROOM.position.x + 160, ROOM.position.y + 120), Color("#8a6f4b"))
 	_add_interactable("Radio set", "Call the mainland", "radio",
 		Vector2(ROOM.position.x + ROOM.size.x - 180, ROOM.position.y + 130), Color("#4b6f8a"))
-	_add_interactable("Lamp-room stair", "Climb toward the light", "door",
+	var stair := _add_interactable("Lamp-room stair", "Climb toward the light", "door",
 		Vector2(ROOM.position.x + ROOM.size.x * 0.5, ROOM.position.y + 60), Color("#3a4a54"))
+	stair.dialogue_path = ""  # This is now a transition, not placeholder dialogue.
+	stair.interacted.connect(_enter_lamp_room)
 
 
-func _add_interactable(label: String, prompt: String, start_id: String, pos: Vector2, color: Color) -> void:
+func _add_interactable(label: String, prompt: String, start_id: String, pos: Vector2, color: Color) -> Interactable:
 	var item := Interactable.new()
 	item.label = label
 	item.prompt_text = prompt
@@ -80,6 +88,7 @@ func _add_interactable(label: String, prompt: String, start_id: String, pos: Vec
 	add_child(item)
 	item.setup()
 	_interactables.append(item)
+	return item
 
 
 func _build_hud() -> void:
@@ -97,9 +106,80 @@ func _build_hud() -> void:
 	_prompt.hide()
 	layer.add_child(_prompt)
 
+	# Screen-space confirmation above the world, readable before scene teardown.
+	var notice_layer := CanvasLayer.new()
+	notice_layer.layer = 15
+	add_child(notice_layer)
+	_save_notice = PanelContainer.new()
+	_save_notice.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_save_notice.offset_left = -300
+	_save_notice.offset_right = 300
+	_save_notice.offset_top = 32
+	_save_notice.offset_bottom = 126
+	_save_notice.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#10252b")
+	style.border_color = Color("#ffd466")
+	style.set_border_width_all(2)
+	style.content_margin_left = 20
+	style.content_margin_right = 20
+	style.content_margin_top = 14
+	style.content_margin_bottom = 14
+	_save_notice.add_theme_stylebox_override("panel", style)
+	notice_layer.add_child(_save_notice)
+	var lines := VBoxContainer.new()
+	lines.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lines.add_theme_constant_override("separation", 6)
+	_save_notice.add_child(lines)
+	_save_notice_title = Label.new()
+	_save_notice_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_save_notice_title.add_theme_font_size_override("font_size", 28)
+	_save_notice_title.add_theme_color_override("font_color", Color("#ffffff"))
+	lines.add_child(_save_notice_title)
+	_save_notice_detail = Label.new()
+	_save_notice_detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_save_notice_detail.add_theme_font_size_override("font_size", 18)
+	_save_notice_detail.add_theme_color_override("font_color", Color("#ffffff"))
+	lines.add_child(_save_notice_detail)
+	_save_notice.hide()
+
+
+func _show_save_notice(title: String, detail: String) -> void:
+	_save_notice_title.text = title
+	_save_notice_detail.text = detail
+	_save_notice.show()
+
+
+func _enter_lamp_room(_source: Interactable) -> void:
+	if _transitioning or _paused or DialogueManager.is_active:
+		return
+	_transitioning = true
+	_set_movement(false)
+	_prompt.hide()
+	# Save the source room before crossing. Continue returns to its entrance.
+	GameState.current_scene = scene_file_path
+	if not GameState.save_game():
+		_transitioning = false
+		_set_movement(true)
+		_show_save_notice("Save failed", "Use the stair to retry. Your previous save is safe.")
+		return
+	_show_save_notice("Game saved", "Checkpoint: ground-floor entrance")
+	await get_tree().create_timer(SAVE_NOTICE_SECONDS, true, false, true).timeout
+	var error := _change_to_lamp_room()
+	if error != OK:
+		_transitioning = false
+		_set_movement(true)
+		_show_save_notice("Game saved", "Lamp room could not load. Use the stair to retry.")
+	else:
+		GameState.current_scene = LAMP_ROOM_SCENE
+
+
+func _change_to_lamp_room() -> Error:
+	return get_tree().change_scene_to_file(LAMP_ROOM_SCENE)
+
 
 func _process(_delta: float) -> void:
-	if _paused or DialogueManager.is_active:
+	if _transitioning or _paused or DialogueManager.is_active:
 		_prompt.hide()
 		return
 	_nearest = _find_nearest()
@@ -124,6 +204,10 @@ func _find_nearest() -> Interactable:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _transitioning:
+		InputTrace.record("game", "blocked_by_transition", event)
+		get_viewport().set_input_as_handled()
+		return
 	if event.is_action_pressed("ui_cancel"):
 		InputTrace.record("game", "pause_toggle", event)
 		_toggle_pause()
@@ -133,6 +217,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		InputTrace.record("game", "blocked_by_pause" if _paused else "blocked_by_dialogue", event)
 		return
 	if event.is_action_pressed("ui_accept") and _nearest != null:
+		_save_notice.hide()
 		InputTrace.record("game", "interact", event)
 		_nearest.interact()
 		get_viewport().set_input_as_handled()
@@ -142,12 +227,12 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _set_movement(enabled: bool) -> void:
 	if _player != null:
-		_player.can_move = enabled and not _paused
+		_player.can_move = enabled and not _paused and not _transitioning
 		InputTrace.record("game", "movement_updated")
 
 
 func _toggle_pause() -> void:
-	if DialogueManager.is_active:
+	if DialogueManager.is_active or _transitioning:
 		return
 	_paused = not _paused
 	_set_movement(not _paused)
@@ -207,7 +292,7 @@ func _show_pause_menu() -> void:
 	vbox.add_child(save)
 
 	var save_hint := Label.new()
-	save_hint.text = "Manual save: story choices and current room.\nContinue starts at the room's entrance.\nThe stair does not autosave."
+	save_hint.text = "Saves keep story choices and the current room.\nContinue starts at the room's entrance.\nThe stair autosaves before entering the lamp room."
 	save_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(save_hint)
 
